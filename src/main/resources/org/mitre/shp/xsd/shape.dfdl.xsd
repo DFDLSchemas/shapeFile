@@ -1,0 +1,757 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:dfdl="http://www.ogf.org/dfdl/dfdl-1.0/"
+	xmlns:fn="http://www.w3.org/2005/xpath-functions"
+	xmlns:math="http://www.w3.org/2005/xpath-functions/math"
+	elementFormDefault="qualified">
+
+	<!-- 
+        DFDL Schema for the (binary) Shapefile format.
+        Author: Roger Costello, The MITRE Corporation.
+        Date: August 22, 2018
+        
+        I have tested this schema against Shape files that
+        contain these shapes: { Point, Polyline, Polygon }. 
+        I have not tested this schema against Shape files that
+        contain these shapes: { MultiPoint, PointZ, PolylineZ, 
+        PolygonZ, MultiPointZ, PointM, PolylineM, PolygonM, 
+        MultiPointM, MultiPatch }
+      -->
+
+	<!--
+        NOTICE
+        
+        This software was produced for the U. S. Government under
+        Basic Contract No. W15P7T-13-C-A802, and is subject to the
+        Rights in Noncommercial Computer Software and Noncommercial
+        Computer Software Documentation Clause 252.227-7014 (FEB 2012)
+        
+        Copyright 2018 The MITRE Corporation.
+		Approved for Public Release, Case Number: 18-2291
+    -->
+	
+	<!-- 
+		Some Shape files contain shapes with millions of points!
+		I have a Shape file containing polygons. Each polygon consists
+		of points. Each point consists of two 8-byte values (representing
+		two float values). Most polygons contain a few dozen points, 
+		some contain a hundred or so points. But one polygon contains 
+		millions of points! 
+
+		There is an arbitrary limit that Daffodil imposes so that arrays
+		can't be bigger than 1024 elements. To raise it, you can do so by
+		setting the maxOccursBounds tunable value, e.g.,
+		daffodil parse -TmaxOccursBounds=5000000 -s shapefile.dfdl.xsd ...
+		
+		Some Shape files are huge. Java needs more memory. So I modified daffodil.bat
+		to give Java more memory:
+		set JOPTS=-Xms8192M -Xmx8192M -XX:ReservedCodeCacheSize=1024M -XX:-UseGCOverheadLimit
+
+	-->
+	
+    <xs:annotation>
+    	<xs:appinfo source="http://www.ogf.org/dfdl/">
+
+    			<dfdl:defineVariable name="CsizValue" type="xs:int" />
+        		<dfdl:format alignmentUnits="bytes" lengthUnits="bits" representation="binary" binaryNumberRep="binary" 
+        			byteOrder="bigEndian" bitOrder="mostSignificantBitFirst" lengthKind="implicit" alignment="1" encodingErrorPolicy="replace" 
+        			binaryFloatRep="ieee" calendarPatternKind="implicit" documentFinalTerminatorCanBeMissing="yes" 
+        			emptyValueDelimiterPolicy="none" escapeSchemeRef="" fillByte="f" floating="no" ignoreCase="no" 
+        			initiatedContent="no" initiator="" leadingSkip="0" separator="" separatorPolicy="suppressed" 
+        			outputNewLine="%CR;%LF;"
+        			textStandardZeroRep="0" textStandardInfinityRep="Inf" textStandardExponentRep="E" 
+        			textStandardNaNRep="NaN" textNumberPattern="#,##0.###;-#,##0.###" textNumberRounding="explicit" 
+        			textNumberRoundingMode="roundUnnecessary" textNumberRoundingIncrement="0" textStandardGroupingSeparator="," 
+        			separatorPosition="infix" sequenceKind="ordered" terminator="" textBidi="no" textNumberCheckPolicy="strict" 
+        			textNumberRep="standard" textOutputMinLength="0" textPadKind="none" textStandardBase="10" textTrimKind="none" trailingSkip="0" truncateSpecifiedLengthString="no" 
+        			utf16Width="fixed" encoding="ISO-8859-1" nilKind="literalValue" nilValueDelimiterPolicy="none" occursCountKind="implicit"
+        		/>
+        	
+        </xs:appinfo>
+    </xs:annotation>
+	
+	<xs:element name="shapefile">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element ref="header" />
+				<xs:element ref="variable-length-record" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="implicit" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="variable-length-record">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="header">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="record-number" type="unsignedint32" />
+							<xs:element name="content-length" type="unsignedint32" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:sequence dfdl:hiddenGroupRef="hidden_shapetype_Group" />
+				<xs:element name="shapetype" type="xs:string" dfdl:inputValueCalc="{ 
+					if (../Hidden_Shapetype_Code eq 0) then 'Null shape'
+					else if (../Hidden_Shapetype_Code eq 1) then 'Point'
+					else if (../Hidden_Shapetype_Code eq 3) then 'Polyline'
+					else if (../Hidden_Shapetype_Code eq 5) then 'Polygon'
+					else if (../Hidden_Shapetype_Code eq 8) then 'MultiPoint'
+					else if (../Hidden_Shapetype_Code eq 11) then 'PointZ'
+					else if (../Hidden_Shapetype_Code eq 13) then 'PolylineZ'
+					else if (../Hidden_Shapetype_Code eq 15) then 'PolygonZ'
+					else if (../Hidden_Shapetype_Code eq 18) then 'MultiPointZ'
+					else if (../Hidden_Shapetype_Code eq 21) then 'PointM'
+					else if (../Hidden_Shapetype_Code eq 23) then 'PolylineM'
+					else if (../Hidden_Shapetype_Code eq 25) then 'PolygonM'
+					else if (../Hidden_Shapetype_Code eq 28) then 'MultiPointM'
+					else if (../Hidden_Shapetype_Code eq 31) then 'MultiPatch'
+					else fn:error() }"/>
+				<xs:choice dfdl:choiceDispatchKey="{ dfdl:encodeDFDLEntities(./shapetype) }" >
+					<xs:element ref="Null-shape" dfdl:choiceBranchKey="Null%SP;shape" />
+					<xs:element ref="Point" dfdl:choiceBranchKey="Point" />
+					<xs:element ref="Polyline" dfdl:choiceBranchKey="Polyline" />
+					<xs:element ref="Polygon" dfdl:choiceBranchKey="Polygon" />
+					<xs:element ref="MultiPoint" dfdl:choiceBranchKey="MultiPoint" />
+					<xs:element ref="PointZ" dfdl:choiceBranchKey="PointZ" />
+					<xs:element ref="PolylineZ" dfdl:choiceBranchKey="PolylineZ" />
+					<xs:element ref="PolygonZ" dfdl:choiceBranchKey="PolygonZ" />
+					<xs:element ref="MultiPointZ" dfdl:choiceBranchKey="MultiPointZ" />
+					<xs:element ref="PointM" dfdl:choiceBranchKey="PointM" />
+					<xs:element ref="PolylineM" dfdl:choiceBranchKey="PolylineM" />
+					<xs:element ref="PolygonM" dfdl:choiceBranchKey="PolygonM" />
+					<xs:element ref="MultiPointM" dfdl:choiceBranchKey="MultiPointM" />
+					<xs:element ref="MultiPatch" dfdl:choiceBranchKey="MultiPatch" />
+				</xs:choice>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="Null-shape" type="xs:string" dfdl:length="0" dfdl:lengthKind="explicit"  dfdl:lengthUnits="characters" />
+	
+	<xs:element name="Point">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="X" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Y" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="Polyline">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="MBR">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="minY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="number-of-parts" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="number-of-points" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Part" type="unsignedint32" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-parts}" dfdl:byteOrder="littleEndian" />
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="Polygon">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="MBR">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="minY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="number-of-parts" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="number-of-points" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Part" type="unsignedint32" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-parts}" dfdl:byteOrder="littleEndian" />
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="MultiPoint">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="MBR">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="minY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="number-of-points" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PointZ">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="X" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Y" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Z" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+				<xs:element name="M" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PolylineZ">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="MBR">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="minY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="number-of-parts" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="number-of-points" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Part" type="unsignedint32" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-parts}" dfdl:byteOrder="littleEndian" />
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+				<xs:element name="Zrange">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Zmin" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="Zmax" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Zarray" minOccurs="0" maxOccurs="unbounded"  type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+				<xs:element name="Mrange" minOccurs="0">
+					<xs:annotation>
+						<xs:appinfo source="http://www.ogf.org/dfdl/">
+							<dfdl:discriminator>
+								{
+								(((2 * ../../header/content-length) - 4) -
+								(40 +  
+								(4 * ../number-of-parts) + 
+								(16 * ../number-of-points) +
+								16 +
+								(8 * ../number-of-points) +
+								(8 * ../number-of-points))) eq 16
+								}
+							</dfdl:discriminator>
+						</xs:appinfo>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Mmin" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="Mmax" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PolygonZ">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="MBR">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="minY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="number-of-parts" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="number-of-points" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Part" type="unsignedint32" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-parts}" dfdl:byteOrder="littleEndian" />
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+				<xs:element name="Zrange">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Zmin" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="Zmax" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Zarray" minOccurs="0" maxOccurs="unbounded"  type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+				<xs:element name="Mrange" minOccurs="0">
+					<xs:annotation>
+						<xs:appinfo source="http://www.ogf.org/dfdl/">
+							<dfdl:discriminator>
+								{
+								(((2 * ../../header/content-length) - 4) -
+								(40 +  
+								(4 * ../number-of-parts) + 
+								(16 * ../number-of-points) +
+								16 +
+								(8 * ../number-of-points) +
+								(8 * ../number-of-points))) eq 16
+								}
+							</dfdl:discriminator>
+						</xs:appinfo>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Mmin" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="Mmax" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="MultiPointZ">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="MBR">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="minY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="number-of-points" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+				<xs:element name="Zrange">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Zmin" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="Zmax" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Zarray" minOccurs="0" maxOccurs="unbounded"  type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+				<xs:element name="Mrange" minOccurs="0">
+					<xs:annotation>
+						<xs:appinfo source="http://www.ogf.org/dfdl/">
+							<dfdl:discriminator>
+								{
+								(((2 * ../../header/content-length) - 4) -
+								(36 +  
+								(16 * ../number-of-points) + 
+								16 +
+								(8 * ../number-of-points) +
+								(8 * ../number-of-points))) eq 16
+								}
+							</dfdl:discriminator>
+						</xs:appinfo>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Mmin" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="Mmax" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PointM">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="X" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Y" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+				<xs:element name="M" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PolylineM" dfdl:lengthKind="explicit" dfdl:lengthUnits="bytes" dfdl:length="{ (2 * ../header/content-length) - 4}">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="MBR">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="minY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="number-of-parts" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="number-of-points" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Part" type="unsignedint32" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-parts}" dfdl:byteOrder="littleEndian" />
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+				<!--  
+					The discriminator does this: Suppose there are 16 bytes at the end of a PolylineM.
+					Suppose number-of-points = 2. Then, we want Mrange to be skipped and Marray to be
+					populated. Without the discriminator, Daffodil would populate Mrange and throw an
+					error because there aren't enough bytes to satisfy Marray. So, skip Mrange whenever
+					there are only enough bytes to satisfy Marray.
+					
+					Here are the semantics that the discriminator implements:
+
+					1. The Shape specification says that Mmin, Mmax, and Marray are optional.
+
+					2. Mmin requires 8 bytes. Mmax also required 8 bytes. Marray requires 8 bytes
+					   per number-of-points.
+
+					3. Suppose there are 16 bytes remaining in the PolylineM and number-of-points = 2. 
+					   Which fields get populated with the byte data: Mmin and Mmax or Marray? Answer: Marray.
+
+				-->
+				<xs:element name="Mrange" minOccurs="0">
+					<xs:annotation>
+						<xs:appinfo source="http://www.ogf.org/dfdl/">
+							<dfdl:discriminator>
+								{
+								(((2 * ../../header/content-length) - 4) -
+								(40 + (4 * ../number-of-parts) + (16 * ../number-of-points) + 
+								(8 * ../number-of-points))) eq 16
+								}
+							</dfdl:discriminator>
+						</xs:appinfo>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Mmin" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="Mmax" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PolygonM" dfdl:lengthKind="explicit" dfdl:lengthUnits="bytes" dfdl:length="{ (2 * ../header/content-length) - 4}">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="MBR">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="minY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="number-of-parts" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="number-of-points" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Part" type="unsignedint32" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-parts}" dfdl:byteOrder="littleEndian" />
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+				<xs:element name="Mrange" minOccurs="0">
+					<xs:annotation>
+						<xs:appinfo source="http://www.ogf.org/dfdl/">
+							<dfdl:discriminator>
+								{
+								(((2 * ../../header/content-length) - 4) -
+								(40 + (4 * ../number-of-parts) + (16 * ../number-of-points) + 
+								(8 * ../number-of-points))) eq 16
+								}
+							</dfdl:discriminator>
+						</xs:appinfo>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Mmin" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="Mmax" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="MultiPointM" dfdl:lengthKind="explicit" dfdl:lengthUnits="bytes" dfdl:length="{ (2 * ../header/content-length) - 4}">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="MBR">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="minY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="number-of-points" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Mrange" minOccurs="0">
+					<xs:annotation>
+						<xs:appinfo source="http://www.ogf.org/dfdl/">
+							<dfdl:discriminator>
+								{
+								(((2 * ../../header/content-length) - 4) -
+								(36 + (16 * ../number-of-points) + 
+								(8 * ../number-of-points))) eq 16
+								}
+							</dfdl:discriminator>
+						</xs:appinfo>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Mmin" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="Mmax" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="MultiPatch" dfdl:lengthKind="explicit" dfdl:lengthUnits="bytes" dfdl:length="{ (2 * ../header/content-length) - 4}">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="MBR">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="minY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="number-of-parts" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="number-of-points" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:element name="Part" type="unsignedint32" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-parts}" dfdl:byteOrder="littleEndian" />
+				<xs:element name="PartType" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-parts}">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:sequence dfdl:hiddenGroupRef="hidden_PartType_Group" />
+							<xs:element name="value" type="xs:string" dfdl:inputValueCalc="{ 
+								if (../Hidden_PartType_Code eq 0) then 'Triangle Strip'
+								else if (../Hidden_PartType_Code eq 1) then 'Triangle Fan'
+								else if (../Hidden_PartType_Code eq 2) then 'Outer Ring'
+								else if (../Hidden_PartType_Code eq 3) then 'Inner Ring'
+								else if (../Hidden_PartType_Code eq 4) then 'First Ring'
+								else if (../Hidden_PartType_Code eq 5) then 'Ring'
+								else fn:error() }"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+				<xs:element name="Zrange">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Zmin" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="Zmax" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Zarray" minOccurs="0" maxOccurs="unbounded"  type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+				<xs:element name="Mrange" minOccurs="0">
+					<xs:annotation>
+						<xs:appinfo source="http://www.ogf.org/dfdl/">
+							<dfdl:discriminator>
+								{
+								(((2 * ../../header/content-length) - 4) -
+								(40 + 
+								(4 * ../number-of-parts) + 
+								(4 * ../number-of-parts) +
+								(16 * ../number-of-points) + 
+								16 +
+								(8 * ../number-of-points) +
+								(8 * ../number-of-points))) eq 16
+								}
+							</dfdl:discriminator>
+						</xs:appinfo>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="Mmin" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="Mmax" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" dfdl:occursCountKind="expression" dfdl:occursCount="{../number-of-points}" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:group name="hidden_PartType_Group">
+		<xs:sequence>
+			<xs:element name="Hidden_PartType_Code" type="unsignedint32" dfdl:byteOrder="littleEndian" dfdl:outputValueCalc="{ 
+				if (../value eq 'Triangle Strip') then 0
+				else if (../value eq 'Triangle Fan') then 1
+				else if (../value eq 'Outer Ring') then 2
+				else if (../value eq 'Inner Ring') then 3
+				else if (../value eq 'First Ring') then 4
+				else if (../value eq 'Ring') then 5
+				else fn:error() }"
+			/>
+		</xs:sequence>
+	</xs:group>
+	
+	<xs:element name="header">
+		<xs:complexType>
+			<xs:sequence>
+				<!-- File code (always hex value 0x0000270a) -->
+				<xs:sequence dfdl:hiddenGroupRef="hidden_Shapefile_File_Code_Group" />
+				<xs:element name='filetype' type='xs:string' dfdl:inputValueCalc='{
+					if ((xs:string(../Hidden_File_Code) eq "0000270a") or (xs:string(../Hidden_File_Code) eq "0000270A")) then "shape file (.shp)"    
+					else "fn:error()"
+					}' />
+				<!-- Unused; five uint32 -->
+				<xs:sequence dfdl:hiddenGroupRef="hidden_Unused_Group" />
+				<xs:element name="filelength" type="unsignedint32" />
+				<xs:element name="version" type="unsignedint32" dfdl:byteOrder="littleEndian" />
+				<xs:sequence dfdl:hiddenGroupRef="hidden_shapetype_Group" />
+				<xs:element name="shapetype" type="xs:string" dfdl:inputValueCalc="{ 
+					if (../Hidden_Shapetype_Code eq 0) then 'Null shape'
+					else if (../Hidden_Shapetype_Code eq 1) then 'Point'
+					else if (../Hidden_Shapetype_Code eq 3) then 'Polyline'
+					else if (../Hidden_Shapetype_Code eq 5) then 'Polygon'
+					else if (../Hidden_Shapetype_Code eq 8) then 'MultiPoint'
+					else if (../Hidden_Shapetype_Code eq 11) then 'PointZ'
+					else if (../Hidden_Shapetype_Code eq 13) then 'PolylineZ'
+					else if (../Hidden_Shapetype_Code eq 15) then 'PolygonZ'
+					else if (../Hidden_Shapetype_Code eq 18) then 'MultiPointZ'
+					else if (../Hidden_Shapetype_Code eq 21) then 'PointM'
+					else if (../Hidden_Shapetype_Code eq 23) then 'PolylineM'
+					else if (../Hidden_Shapetype_Code eq 25) then 'PolygonM'
+					else if (../Hidden_Shapetype_Code eq 28) then 'MultiPointM'
+					else if (../Hidden_Shapetype_Code eq 31) then 'MultiPatch'
+					else fn:error() }"/>
+				<xs:element name="MBR">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="minY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxX" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxY" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="Z-range">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minZ" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxZ" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="M-range">
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="minM" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+							<xs:element name="maxM" type="xs:double" dfdl:length="8" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:byteOrder="littleEndian" />
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:group name="hidden_Shapefile_File_Code_Group">
+		<xs:sequence>
+			<xs:element name="Hidden_File_Code" type="xs:hexBinary" dfdl:length="4" dfdl:lengthKind="explicit"  dfdl:lengthUnits="bytes" dfdl:outputValueCalc="{
+				if (../filetype eq 'shape file (.shp)') then xs:hexBinary('0000270A')
+				else fn:error()
+				}">
+				<xs:annotation>
+					<xs:appinfo source="http://www.ogf.org/dfdl/">
+						<!-- The identifier is 00 00 27 0a -->
+						<dfdl:assert><![CDATA[{ (xs:string(.) eq "0000270a") or (xs:string(.) eq "0000270A") }]]></dfdl:assert>
+					</xs:appinfo>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:group>
+	
+	<xs:group name="hidden_Unused_Group">
+		<xs:sequence>
+			<xs:element name="Hidden_Unused" type="xs:hexBinary" dfdl:length="20" dfdl:lengthKind="explicit" 
+				dfdl:lengthUnits="bytes" dfdl:outputValueCalc="{ xs:hexBinary('0000000000000000000000000000000000000000')}">
+				<xs:annotation>
+					<xs:appinfo source="http://www.ogf.org/dfdl/">
+						<!-- The unused bytes should be zeroes -->
+						<dfdl:assert><![CDATA[{ (xs:string(.) eq "0000000000000000000000000000000000000000") }]]></dfdl:assert>
+					</xs:appinfo>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:group>
+	
+	<xs:group name="hidden_shapetype_Group">
+		<xs:sequence>
+			<xs:element name="Hidden_Shapetype_Code" type="unsignedint32" dfdl:byteOrder="littleEndian" dfdl:outputValueCalc="{ 
+				if (../shapetype eq 'Null shape') then 0
+				else if (../shapetype eq 'Point') then 1
+				else if (../shapetype eq 'Polyline') then 3
+				else if (../shapetype eq 'Polygon') then 5
+				else if (../shapetype eq 'MultiPoint') then 8
+				else if (../shapetype eq 'PointZ') then 11
+				else if (../shapetype eq 'PolylineZ') then 13
+				else if (../shapetype eq 'PolygonZ') then 15
+				else if (../shapetype eq 'MultiPointZ') then 18
+				else if (../shapetype eq 'PointM') then 21
+				else if (../shapetype eq 'PolylineM') then 23
+				else if (../shapetype eq 'PolygonM') then 25
+				else if (../shapetype eq 'MultiPointM') then 28
+				else if (../shapetype eq 'MultiPatch') then 31
+				else fn:error() }"
+			/>
+		</xs:sequence>
+	</xs:group>
+		
+	<xs:complexType name="empty">
+		<xs:sequence/>
+	</xs:complexType>
+	
+	<xs:simpleType name="unsignedint1" dfdl:length="1" dfdl:lengthKind="explicit">
+		<xs:restriction base="xs:unsignedInt"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="unsignedint2" dfdl:length="2" dfdl:lengthKind="explicit">
+		<xs:restriction base="xs:unsignedInt"/>
+	</xs:simpleType>
+	
+	<xs:simpleType name="unsignedint3" dfdl:length="3" dfdl:lengthKind="explicit">
+		<xs:restriction base="xs:unsignedInt"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="unsignedint4" dfdl:length="4" dfdl:lengthKind="explicit">
+		<xs:restriction base="xs:unsignedInt"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="unsignedint8" dfdl:length="8" dfdl:lengthKind="explicit">
+		<xs:restriction base="xs:unsignedInt"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="unsignedint16" dfdl:length="16" dfdl:lengthKind="explicit">
+		<xs:restriction base="xs:unsignedInt"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="unsignedint24" dfdl:length="24" dfdl:lengthKind="explicit">
+		<xs:restriction base="xs:unsignedInt"/>
+	</xs:simpleType>
+	
+	<xs:simpleType name="unsignedint30" dfdl:length="30" dfdl:lengthKind="explicit">
+		<xs:restriction base="xs:unsignedInt"/>
+	</xs:simpleType>
+
+	<xs:simpleType name="unsignedint32" dfdl:length="32" dfdl:lengthKind="explicit">
+		<xs:restriction base="xs:unsignedInt"/>
+	</xs:simpleType>
+
+</xs:schema>

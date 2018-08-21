@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"> 
+    
+    <!-- 
+        XML Schema for the XML instances that are generated
+        by parsing (binary) Shape files using DFDL.
+        Author: Roger Costello, The MITRE Corporation.
+        Date: August 20, 2018
+      -->
+    
+    <!--
+        NOTICE
+        
+        This software was produced for the U. S. Government under
+        Basic Contract No. W15P7T-13-C-A802, and is subject to the
+        Rights in Noncommercial Computer Software and Noncommercial
+        Computer Software Documentation Clause 252.227-7014 (FEB 2012)
+        
+        Copyright 2018 The MITRE Corporation.
+		Approved for Public Release, Case Number: 18-2291
+    -->
+    
+    <xs:element name="shapefile">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="header">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="filetype" type="xs:string" fixed="shape file (.shp)" />
+                            <xs:element name="filelength" type="xs:unsignedInt" />
+                            <xs:element name="version" type="xs:unsignedInt" />
+                            <xs:element name="shapetype" type="shapetype-type" />
+                            <xs:element name="MBR" type="MBR-type" />
+                            <xs:element name="Z-range" type="Z-range-type" />
+                            <xs:element name="M-range" type="M-range-type" />
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="variable-length-record" minOccurs="0" maxOccurs="unbounded">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="header">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="record-number" type="xs:unsignedInt" />
+                                        <xs:element name="content-length" type="xs:unsignedInt" />
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                            <xs:element name="shapetype" type="shapetype-type" />
+                            <xs:choice>
+                                <xs:element ref="Null-shape" />
+                                <xs:element ref="Point" />
+                                <xs:element ref="Polyline" />
+                                <xs:element ref="Polygon" />
+                                <xs:element ref="MultiPoint" />
+                                <xs:element ref="PointZ" />
+                                <xs:element ref="PolylineZ" />
+                                <xs:element ref="PolygonZ" />
+                                <xs:element ref="MultiPointZ" />
+                                <xs:element ref="PointM" />
+                                <xs:element ref="PolylineM" />
+                                <xs:element ref="PolygonM" />
+                                <xs:element ref="MultiPointM" />
+                                <xs:element ref="MultiPatch" />
+                            </xs:choice>  
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    
+    <xs:simpleType name="shapetype-type">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Null shape" />
+            <xs:enumeration value="Point" />
+            <xs:enumeration value="Polyline" />
+            <xs:enumeration value="Polygon" />
+            <xs:enumeration value="MultiPoint" />
+            <xs:enumeration value="PointZ" />
+            <xs:enumeration value="PolylineZ" />
+            <xs:enumeration value="PolygonZ" />
+            <xs:enumeration value="MultiPointZ" />
+            <xs:enumeration value="PointM" />
+            <xs:enumeration value="PolylineM" />
+            <xs:enumeration value="PolygonM" />
+            <xs:enumeration value="MultiPointM" />
+            <xs:enumeration value="MultiPatch" />
+        </xs:restriction>
+    </xs:simpleType>
+    
+    <xs:complexType name="MBR-type">
+        <xs:sequence>
+            <xs:element name="minX" type="xs:double" />
+            <xs:element name="minY" type="xs:double" />
+            <xs:element name="maxX" type="xs:double" />
+            <xs:element name="maxY" type="xs:double" />
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="Z-range-type">
+        <xs:sequence>
+            <xs:element name="minZ" type="xs:double" />
+            <xs:element name="maxZ" type="xs:double" />
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:complexType name="M-range-type">
+        <xs:sequence>
+            <xs:element name="minM" type="xs:double" />
+            <xs:element name="maxM" type="xs:double" />
+        </xs:sequence>
+    </xs:complexType>
+    
+    <xs:element name="Null-shape">
+        <xs:complexType>
+            <xs:sequence />
+        </xs:complexType>
+    </xs:element>
+	
+	<xs:element name="Point">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="X" type="xs:double" />
+				<xs:element name="Y" type="xs:double" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="Polyline">
+		<xs:complexType>
+			<xs:sequence>
+			    <xs:element name="MBR" type="MBR-type" />
+			    <xs:element name="number-of-parts" type="xs:unsignedInt" />
+			    <xs:element name="number-of-points" type="xs:unsignedInt" />
+			    <xs:element name="Part" type="xs:unsignedInt" minOccurs="0" maxOccurs="unbounded" />
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="Polygon">
+		<xs:complexType>
+			<xs:sequence>
+			    <xs:element name="MBR" type="MBR-type" />
+			    <xs:element name="number-of-parts" type="xs:unsignedInt" />
+			    <xs:element name="number-of-points" type="xs:unsignedInt" />
+			    <xs:element name="Part" type="xs:unsignedInt" minOccurs="0" maxOccurs="unbounded" />
+			    <xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="MultiPoint">
+		<xs:complexType>
+			<xs:sequence>
+			    <xs:element name="MBR" type="MBR-type" />
+			    <xs:element name="number-of-points" type="xs:unsignedInt" />
+			    <xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PointZ">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="X" type="xs:double" />
+				<xs:element name="Y" type="xs:double" />
+				<xs:element name="Z" type="xs:double" />
+				<xs:element name="M" type="xs:double" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PolylineZ">
+		<xs:complexType>
+			<xs:sequence>
+			    <xs:element name="MBR" type="MBR-type" />
+			    <xs:element name="number-of-parts" type="xs:unsignedInt" />
+			    <xs:element name="number-of-points" type="xs:unsignedInt" />
+			    <xs:element name="Part" type="xs:unsignedInt" minOccurs="0" maxOccurs="unbounded" />
+			    <xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" />
+			    <xs:element name="Z-range" type="Z-range-type" />
+				<xs:element name="Zarray" minOccurs="0" maxOccurs="unbounded" type="xs:double" />
+			    <xs:element name="Mrange" minOccurs="0" type="M-range-type" />
+				<xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PolygonZ">
+		<xs:complexType>
+		    <xs:sequence>
+		        <xs:element name="MBR" type="MBR-type" />
+		        <xs:element name="number-of-parts" type="xs:unsignedInt" />
+		        <xs:element name="number-of-points" type="xs:unsignedInt" />
+		        <xs:element name="Part" type="xs:unsignedInt" minOccurs="0" maxOccurs="unbounded" />
+		        <xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" />
+		        <xs:element name="Z-range" type="Z-range-type" />
+		        <xs:element name="Zarray" minOccurs="0" maxOccurs="unbounded" type="xs:double" />
+		        <xs:element name="Mrange" minOccurs="0" type="M-range-type" />
+		        <xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="MultiPointZ">
+		<xs:complexType>
+			<xs:sequence>
+			    <xs:element name="MBR" type="MBR-type" />
+			    <xs:element name="number-of-points" type="xs:unsignedInt" />
+			    <xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" />
+			    <xs:element name="Z-range" type="Z-range-type" />
+			    <xs:element name="Zarray" minOccurs="0" maxOccurs="unbounded" type="xs:double" />
+			    <xs:element name="Mrange" minOccurs="0" type="M-range-type" />
+			    <xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PointM">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="X" type="xs:double" />
+				<xs:element name="Y" type="xs:double" />
+				<xs:element name="M" type="xs:double" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PolylineM">
+		<xs:complexType>
+			<xs:sequence>
+			    <xs:element name="MBR" type="MBR-type" />
+			    <xs:element name="number-of-parts" type="xs:unsignedInt" />
+			    <xs:element name="number-of-points" type="xs:unsignedInt" />
+			    <xs:element name="Part" type="xs:unsignedInt" minOccurs="0" maxOccurs="unbounded" />
+			    <xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" />
+			    <xs:element name="Mrange" minOccurs="0" type="M-range-type" />
+			    <xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="PolygonM">
+		<xs:complexType>
+			<xs:sequence>
+			    <xs:element name="MBR" type="MBR-type" />
+			    <xs:element name="number-of-parts" type="xs:unsignedInt" />
+			    <xs:element name="number-of-points" type="xs:unsignedInt" />
+			    <xs:element name="Part" type="xs:unsignedInt" minOccurs="0" maxOccurs="unbounded" />
+			    <xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" />
+			    <xs:element name="Mrange" minOccurs="0" type="M-range-type" />
+			    <xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="MultiPointM">
+		<xs:complexType>
+			<xs:sequence>
+			    <xs:element name="MBR" type="MBR-type" />
+			    <xs:element name="number-of-points" type="xs:unsignedInt" />
+			    <xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" />
+			    <xs:element name="Mrange" minOccurs="0" type="M-range-type" />
+			    <xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	
+	<xs:element name="MultiPatch">
+		<xs:complexType>
+			<xs:sequence>
+			    <xs:element name="MBR" type="MBR-type" />
+			    <xs:element name="number-of-parts" type="xs:unsignedInt" />
+			    <xs:element name="number-of-points" type="xs:unsignedInt" />
+			    <xs:element name="Part" type="xs:unsignedInt" minOccurs="0" maxOccurs="unbounded" />
+				<xs:element name="PartType" minOccurs="0" maxOccurs="unbounded" type="PartType" />
+				<xs:element ref="Point" minOccurs="0" maxOccurs="unbounded" />
+			    <xs:element name="Z-range" type="Z-range-type" />
+				<xs:element name="Zarray" minOccurs="0" maxOccurs="unbounded" type="xs:double" />
+			    <xs:element name="Mrange" minOccurs="0" type="M-range-type" />
+			    <xs:element name="Marray" minOccurs="0" maxOccurs="unbounded" type="xs:double" />
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+       
+    <xs:simpleType name="PartType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="Triangle Strip" />
+            <xs:enumeration value="Triangle Fan" />
+            <xs:enumeration value="Outer Ring" />
+            <xs:enumeration value="Inner Ring" />
+            <xs:enumeration value="First Ring" />
+            <xs:enumeration value="Ring" />
+        </xs:restriction>
+    </xs:simpleType>
+    
+</xs:schema>

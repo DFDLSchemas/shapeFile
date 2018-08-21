@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<tdml:testSuite suiteName="Shp" description="Shp tests"
+  xmlns:dfdl="http://www.ogf.org/dfdl/dfdl-1.0/" 
+  xmlns:fn="http://www.w3.org/2005/xpath-functions" 
+  xmlns:tdml="http://www.ibm.com/xmlns/dfdl/testData" 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  defaultRoundTrip="true">
+
+  <tdml:parserTestCase name="test_ne_110m_admin_0_countries" root="shapefile" model="org/mitre/shp/xsd/shape.dfdl.xsd">
+    <tdml:document>
+      <tdml:documentPart type="file">org/mitre/shp/data/natural_earth_data.com/ne_110m_admin_0_countries.shp</tdml:documentPart>
+    </tdml:document>
+    <tdml:infoset>
+      <tdml:dfdlInfoset type="file">org/mitre/shp/infosets/natural_earth_data.com/ne_110m_admin_0_countries.shp.xml</tdml:dfdlInfoset>
+    </tdml:infoset>
+  </tdml:parserTestCase>
+
+  <tdml:parserTestCase name="test_ne_110m_admin_1_states_provinces" root="shapefile" model="org/mitre/shp/xsd/shape.dfdl.xsd">
+    <tdml:document>
+      <tdml:documentPart type="file">org/mitre/shp/data/natural_earth_data.com/ne_110m_admin_1_states_provinces.shp</tdml:documentPart>
+    </tdml:document>
+    <tdml:infoset>
+      <tdml:dfdlInfoset type="file">org/mitre/shp/infosets/natural_earth_data.com/ne_110m_admin_1_states_provinces.shp.xml</tdml:dfdlInfoset>
+    </tdml:infoset>
+  </tdml:parserTestCase>
+
+  <tdml:parserTestCase name="test_ne_10m_airports" root="shapefile" model="org/mitre/shp/xsd/shape.dfdl.xsd">
+    <tdml:document>
+      <tdml:documentPart type="file">org/mitre/shp/data/natural_earth_data.com/ne_10m_airports.shp</tdml:documentPart>
+    </tdml:document>
+    <tdml:infoset>
+      <tdml:dfdlInfoset type="file">org/mitre/shp/infosets/natural_earth_data.com/ne_10m_airports.shp.xml</tdml:dfdlInfoset>
+    </tdml:infoset>
+  </tdml:parserTestCase>
+
+  <tdml:parserTestCase name="test_ne_10m_time_zones" root="shapefile" model="org/mitre/shp/xsd/shape.dfdl.xsd">
+    <tdml:document>
+      <tdml:documentPart type="file">org/mitre/shp/data/natural_earth_data.com/ne_10m_time_zones.shp</tdml:documentPart>
+    </tdml:document>
+    <tdml:infoset>
+      <tdml:dfdlInfoset type="file">org/mitre/shp/infosets/natural_earth_data.com/ne_10m_time_zones.shp.xml</tdml:dfdlInfoset>
+    </tdml:infoset>
+  </tdml:parserTestCase>
+
+</tdml:testSuite>
