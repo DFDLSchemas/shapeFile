@@ -9,7 +9,7 @@ lazy val root = (project in file(".")).
     )),
     name := "dfdl-shp",
     libraryDependencies := Seq(
-      "org.apache.daffodil" %% "daffodil-tdml" % "2.2.0" % "test",
+      "org.apache.daffodil" %% "daffodil-tdml-processor" % "2.4.0-SNAPSHOT" % "test",
       "junit" % "junit" % "4.12" % "test",
       "com.novocode" % "junit-interface" % "0.11" % "test",
     )
