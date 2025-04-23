@@ -8,8 +8,8 @@ import org.apache.daffodil.tdml.Runner
 object TestShp {
   lazy val runner = Runner("/org/mitre/shp/", "TestShp.tdml")
 
-  @AfterClass def shutDown {
-    runner.reset
+  @AfterClass def shutDown = {
+    runner.reset()
   }
 }
 
